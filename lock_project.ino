@@ -42,6 +42,8 @@ void setup() {
 
   lcd.init();                      // initialize the lcd
   lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("Menu: Press '*' to wipe records, '1' to enter read mode, or '2' to enter program mode.");
 
   Serial.println(F("Access Control v0.1"));
   ShowReaderDetails(); // Show details of PCD - MFRC522 Card Reader details
@@ -49,8 +51,15 @@ void setup() {
   if (key == '*') {  // when button pressed pin should get low, button connected to ground
     Serial.println(F("Wipe Button Pressed"));
     Serial.println(F("This will be remove all records and cannot be undone"));
+    lcd.setCursor(0,0);
+    lcd.print("Wipe Mode:")
+    lcd.setCursor(0,1);
+    lcd.print("This action will remove all records and cannot be undone");
+    lcd.print("To confirm, press '3');
     key = keypad.waitForKey();
-    if (key == '1') {    // If button still be pressed, wipe EEPROM
+    if (key == '3') {    // If button still be pressed, wipe EEPROM
+      lcd.setCursor(0,0);
+      lcd.print("Wiping records . . .");
       Serial.println(F("Starting Wiping EEPROM"));
       for (uint16_t x = 0; x < EEPROM.length(); x = x + 1) {    //Loop end of EEPROM address
         if (EEPROM.read(x) == 0) {              //If EEPROM address 0
@@ -61,15 +70,24 @@ void setup() {
         }
       }
       Serial.println(F("EEPROM Successfully Wiped"));
+      lcd.print("Records successfully wiped");
     }
     else {
       Serial.println(F("Wiping Cancelled"));
+      lcd.setCursor(0,0);
+      lcd.print("Wipe cancelled");
     }
   } else if (key == '2') {
+    lcd.setCursor(0,0);
+    lcd.print("Program Mode:");
+    lcd.setCursor(0,1);
+    lcd.print("Scan a device to ADD or REMOVE");
     Serial.println(F("Entering Program Mode"));
     Serial.println(F("Scan a PICC to ADD or REMOVE to EEPROM"));
     programMode = true;
-  } else {
+  } else if (key == '1'){
+    lcd.setCursor(0,0);
+    lcd.print("Read Mode: Scan friend and enter.");
     Serial.println(F("Entering Read Mode"));
   }
 }
@@ -80,23 +98,35 @@ void loop() {
   } while (!successRead);
   if (programMode) {
     if ( findID(readCard) ) { // If scanned card is known delete it
+      lcd.setCursor(0,0);
+      lcd.print("I know this device, removing . . . ");
       Serial.println(F("I know this PICC, removing..."));
       deleteID(readCard);
+      lcd.setCursor(0,1);
+      lcd.print("Scan a device to ADD or REMOVE");
       Serial.println("-----------------------------");
       Serial.println(F("Scan a PICC to ADD or REMOVE to EEPROM"));
     }
     else {                    // If scanned card is not known add it
+      lcd.setCursor(0,0);
+      lcd.print(""I do not know this PICC, adding...");
       Serial.println(F("I do not know this PICC, adding..."));
       writeID(readCard);
       Serial.println(F("-----------------------------"));
+      lcd.setCursor(0,1);
+      lcd.print("Scan a device to ADD or REMOVE");
       Serial.println(F("Scan a PICC to ADD or REMOVE to EEPROM"));
     }
   } else{
      if ( findID(readCard) ) { // If not, see if the card is in the EEPROM
-        Serial.println(F("Welcome, You shall pass"));
+       lcd.setCursor(0,0);
+       lcd.print("You shall pass. Welcome.");
+       Serial.println(F("Welcome, You shall pass"));
        // granted(300);         // Open the door lock for 300 ms
       }
       else {      // If not, show that the ID was not valid
+       lcd.setCursor(0,0);
+       lcd.print("You shall not pass.");
         Serial.println(F("You shall not pass"));
        // denied();
       }
