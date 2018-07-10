@@ -7,6 +7,8 @@
 
 LiquidCrystal_I2C lcd(0x3F, 16, 2); // set the LCD address to 0x27 for a 16 chars and 2 line display
 
+String accessCode="*123456#";
+
 const byte ROWS = 4; //four rows
 const byte COLS = 3; //three columns
 char keys[ROWS][COLS] = {
@@ -43,53 +45,77 @@ void setup() {
   lcd.init();                      // initialize the lcd
   lcd.backlight();
   lcd.setCursor(0,0);
-  lcd.print("Menu: Press '*' to wipe records, '1' to enter read mode, or '2' to enter program mode.");
+  lcd.print("Scan device or enter access code for programming menu.");
 
   Serial.println(F("Access Control v0.1"));
   ShowReaderDetails(); // Show details of PCD - MFRC522 Card Reader details
   char key = keypad.waitForKey();
-  if (key == '*') {  // when button pressed pin should get low, button connected to ground
-    Serial.println(F("Wipe Button Pressed"));
-    Serial.println(F("This will be remove all records and cannot be undone"));
-    lcd.setCursor(0,0);
-    lcd.print("Wipe Mode:")
-    lcd.setCursor(0,1);
-    lcd.print("This action will remove all records and cannot be undone");
-    lcd.print("To confirm, press '3');
-    key = keypad.waitForKey();
-    if (key == '3') {    // If button still be pressed, wipe EEPROM
+  
+  if(key != NO_KEY)
+    {
+        String codcurent = takeCode(key);
+        boolean A = compareCODE(codcurent);         //A is a variable that stores the current code
+ 
+        if(A==1)
+        {            
+              lcd.setCursor(0,0);
+              lcd.clear();
+              lcd.print("Menu: Press '*' to wipe records, '1' to enter read mode, or '2' to enter program mode.");
+               
+              if (key == '*') {  // when button pressed pin should get low, button connected to ground
+                  Serial.println(F("Wipe Button Pressed"));
+                  Serial.println(F("This will be remove all records and cannot be undone"));
+                  lcd.setCursor(0,0);
+                  lcd.print("Wipe Mode:")
+                  lcd.setCursor(0,1);
+                  lcd.print("This action will remove all records and cannot be undone");
+                  lcd.print("To confirm, press '3');
+                  key = keypad.waitForKey();
+                   
+                  if (key == '3') {    // If button still be pressed, wipe EEPROM
+                        lcd.setCursor(0,0);
+                        lcd.print("Wiping records . . .");
+                        Serial.println(F("Starting Wiping EEPROM"));
+                        for (uint16_t x = 0; x < EEPROM.length(); x = x + 1) {    //Loop end of EEPROM address
+                              if (EEPROM.read(x) == 0) {              //If EEPROM address 0
+                        // do nothing, already clear, go to the next address in order to save time and reduce writes to EEPROM
+                              }
+                              else {
+                                  EEPROM.write(x, 0);       // if not write 0 to clear, it takes 3.3mS
+                              }
+                        }
+                        Serial.println(F("EEPROM Successfully Wiped"));
+                        lcd.print("Records successfully wiped");
+                  }
+                  else {
+                        Serial.println(F("Wiping Cancelled"));
+                        lcd.setCursor(0,0);
+                        lcd.print("Wipe cancelled");
+                  }
+              } else if (key == '2') {
+                    lcd.setCursor(0,0);
+                    lcd.print("Program Mode:");
+                    lcd.setCursor(0,1);
+                    lcd.print("Scan a device to ADD or REMOVE");
+                    Serial.println(F("Entering Program Mode"));
+                    Serial.println(F("Scan a PICC to ADD or REMOVE to EEPROM"));
+                    programMode = true;
+              } else if (key == '1'){
+                    lcd.setCursor(0,0);
+                    lcd.print("Read Mode: Scan friend and enter.");
+                    Serial.println(F("Entering Read Mode"));
+              }
+  else
+  {
+      lcd.clear();
+      lcd.print("INVALID ADMIN CODE");
+      delay(2000);
       lcd.setCursor(0,0);
-      lcd.print("Wiping records . . .");
-      Serial.println(F("Starting Wiping EEPROM"));
-      for (uint16_t x = 0; x < EEPROM.length(); x = x + 1) {    //Loop end of EEPROM address
-        if (EEPROM.read(x) == 0) {              //If EEPROM address 0
-          // do nothing, already clear, go to the next address in order to save time and reduce writes to EEPROM
-        }
-        else {
-          EEPROM.write(x, 0);       // if not write 0 to clear, it takes 3.3mS
-        }
-      }
-      Serial.println(F("EEPROM Successfully Wiped"));
-      lcd.print("Records successfully wiped");
-    }
-    else {
-      Serial.println(F("Wiping Cancelled"));
-      lcd.setCursor(0,0);
-      lcd.print("Wipe cancelled");
-    }
-  } else if (key == '2') {
-    lcd.setCursor(0,0);
-    lcd.print("Program Mode:");
-    lcd.setCursor(0,1);
-    lcd.print("Scan a device to ADD or REMOVE");
-    Serial.println(F("Entering Program Mode"));
-    Serial.println(F("Scan a PICC to ADD or REMOVE to EEPROM"));
-    programMode = true;
-  } else if (key == '1'){
-    lcd.setCursor(0,0);
-    lcd.print("Read Mode: Scan friend and enter.");
-    Serial.println(F("Entering Read Mode"));
+      lcd.clear();
+      lcd.print("BLOCKED");
+      return;       
   }
+}
 }
 
 void loop() {
@@ -254,6 +280,30 @@ void writeID( byte a[] ) {
     Serial.println(F("Failed! There is something wrong with ID or bad EEPROM"));
   }
 }
+                
+boolean compareCODE(String a)   //We type a code on keypad and this will be compared with the accessCode;
+{   
+  if(a.equals(accessCode))   
+      return 1;
+  else 
+      return 0;  
+}
+ 
+String takeCode(char x) //Will display on the LCD the code typed
+{
+      char vec[10];
+      vec[0]=x;
+      lcd.setCursor(0,0);
+      lcd.clear();
+      lcd.print('X');
+      for(int i=1;i<8;i++){
+          vec[i]=myKeypad.waitForKey();   //Waits for 8 keys to be pressed and after that  
+          lcd.print('X');     //is taking the decision
+     }      
+     vec[8]=\0;
+     String str(vec);
+     return str;
+}  
 
 uint8_t findIDSLOT( byte find[] ) {
   uint8_t count = EEPROM.read(0);       // Read the first Byte of EEPROM that
